@@ -6,18 +6,34 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "worker": "bun run --watch scripts/worker.ts",
+    "scheduler": "bun run --watch scripts/scheduler.ts",
+    "telegram-poller": "bun run --watch scripts/telegram-poller.ts"
   },
   "dependencies": {
+    "bullmq": "^6.1.1",
+    "date-fns": "^4.4.0",
+    "date-fns-tz": "^3.2.0",
+    "drizzle-orm": "^0.45.2",
+    "ioredis": "^6.0.0",
     "next": "16.3.1",
+    "next-auth": "^5.0.0-beta.32",
+    "postgres": "^3.4.9",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.21.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "tailwindcss": "^4",
@@ -29,6 +45,8 @@
     "unrs-resolver"
   ],
   "trustedDependencies": [
+    "esbuild",
+    "msgpackr-extract",
     "sharp",
     "unrs-resolver"
   ]

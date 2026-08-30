@@ -63,6 +63,28 @@ export async function completeTaskOccurrence(
   return updated;
 }
 
+/** Completes an occurrence by id directly — used by Telegram button callbacks, which only carry the occurrence id. */
+export async function completeOccurrenceById(userId: string, occurrenceId: string) {
+  const [resolved] = await db
+    .select()
+    .from(taskOccurrences)
+    .where(and(eq(taskOccurrences.id, occurrenceId), eq(taskOccurrences.userId, userId)))
+    .limit(1);
+  if (!resolved) throw new AppError("Occurrence not found", 404);
+  return completeTaskOccurrence(userId, resolved.taskId, resolved.id);
+}
+
+/** Skips an occurrence by id directly — used by Telegram button callbacks, which only carry the occurrence id. */
+export async function skipOccurrenceById(userId: string, occurrenceId: string) {
+  const [resolved] = await db
+    .select()
+    .from(taskOccurrences)
+    .where(and(eq(taskOccurrences.id, occurrenceId), eq(taskOccurrences.userId, userId)))
+    .limit(1);
+  if (!resolved) throw new AppError("Occurrence not found", 404);
+  return skipTaskOccurrence(userId, resolved.taskId, resolved.id);
+}
+
 export async function skipTaskOccurrence(
   userId: string,
   taskId: string,

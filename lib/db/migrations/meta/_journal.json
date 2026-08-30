@@ -8,6 +8,13 @@
       "when": 1788067791322,
       "tag": "0000_stale_korvac",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788091954315,
+      "tag": "0001_lyrical_bill_hollister",
+      "breakpoints": true
     }
   ]
 }

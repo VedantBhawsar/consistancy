@@ -78,6 +78,7 @@ async function processNotificationJob(job: Job<NotificationJobData>) {
         taskTitle: row.taskTitle,
         durationMinutes: row.durationMinutes,
         scheduledTime: scheduledTimeLocal,
+        occurrenceId: row.taskOccurrenceId,
       },
     });
 
@@ -150,8 +151,14 @@ export function startNotificationWorker() {
       .where(eq(notificationJobs.id, notificationJobId));
 
     const [occurrence] = await db
-      .select({ userId: taskOccurrences.userId })
+      .select({
+        userId: taskOccurrences.userId,
+        taskTitle: tasks.title,
+        telegramChatId: users.telegramChatId,
+      })
       .from(taskOccurrences)
+      .innerJoin(tasks, eq(taskOccurrences.taskId, tasks.id))
+      .innerJoin(users, eq(taskOccurrences.userId, users.id))
       .where(eq(taskOccurrences.id, jobRow.taskOccurrenceId))
       .limit(1);
     if (!occurrence) return;
@@ -163,6 +170,20 @@ export function startNotificationWorker() {
       status: "FAILED",
       errorMessage: message,
     });
+
+    // Best-effort: tell the user their reminder never went out. If Telegram
+    // itself is what's failing, this will also fail — swallow, don't retry.
+    if (occurrence.telegramChatId) {
+      try {
+        const { sendTelegramText } = await import("@/lib/notifications/telegram-bot");
+        await sendTelegramText(
+          occurrence.telegramChatId,
+          `⚠️ Reminder for "${occurrence.taskTitle}" failed to send after 3 attempts. You may want to check it manually.`
+        );
+      } catch (alertErr) {
+        console.error("Failed to send dead-letter alert", alertErr);
+      }
+    }
   });
 
   return worker;

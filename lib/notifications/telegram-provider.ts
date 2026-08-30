@@ -25,6 +25,15 @@ export class TelegramProvider implements NotificationProvider {
         body: JSON.stringify({
           chat_id: message.to,
           text: reminderText(message.templateData),
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "✅ Done", callback_data: `done:${message.templateData.occurrenceId}` },
+                { text: "⏭ Skip", callback_data: `skip:${message.templateData.occurrenceId}` },
+                { text: "⏰ Snooze 10m", callback_data: `snooze:${message.templateData.occurrenceId}` },
+              ],
+            ],
+          },
         }),
       }
     );

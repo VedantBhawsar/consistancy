@@ -1,4 +1,5 @@
 import { pollTelegramUpdates } from "@/lib/services/telegram-poller";
+import { setTelegramCommands } from "@/lib/notifications/telegram-bot";
 
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 if (!botToken) {
@@ -10,6 +11,7 @@ let running = true;
 
 async function loop() {
   console.log("Telegram poller started");
+  await setTelegramCommands();
   while (running) {
     try {
       const { nextOffset } = await pollTelegramUpdates(botToken!, offset);

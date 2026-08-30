@@ -6,6 +6,8 @@ export type NotificationMessage = {
     durationMinutes: number;
     /** Scheduled time formatted in the recipient's local timezone, e.g. "08:30" */
     scheduledTime: string;
+    /** task_occurrence id — lets the provider attach Done/Skip/Snooze buttons. */
+    occurrenceId: string;
   };
 };
 

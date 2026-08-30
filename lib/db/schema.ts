@@ -73,6 +73,13 @@ export const users = pgTable("users", {
     .$type<NotificationPreferences>()
     .notNull()
     .default({ channel: "TELEGRAM", remindBeforeMinutes: [0] }),
+  digestsEnabled: boolean("digests_enabled").notNull().default(true),
+  /** Local HH:MM (user's timezone) the morning/evening digest should fire. */
+  morningDigestTime: text("morning_digest_time").notNull().default("08:00"),
+  eveningDigestTime: text("evening_digest_time").notNull().default("21:30"),
+  /** YYYY-MM-DD (user's timezone) of the last digest sent — dedupes across scheduler ticks. */
+  lastMorningDigestDate: text("last_morning_digest_date"),
+  lastEveningDigestDate: text("last_evening_digest_date"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

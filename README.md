@@ -1,9 +1,11 @@
 # Consistancy
 
 A personal productivity app for running a predefined daily routine: define
-scheduled tasks, get reminded on Telegram when they're due, mark them done
-(from the web app or by replying in Telegram), and track daily/weekly
-completion.
+scheduled tasks, get reminded on Telegram when they're due, and manage the
+whole thing from Telegram itself — tap Done/Skip/Snooze buttons on a
+reminder, or send commands like `TODAY`, `STATUS`, `NEXT`, `TASKS`, or
+`NEWTASK` — with daily/weekly completion tracked on the web dashboard too.
+Morning and evening digests are sent automatically.
 
 The full product spec/design doc lives in [`spec.md`](./spec.md) (note: it
 was written against WhatsApp as the notification channel; the app actually
@@ -15,9 +17,10 @@ ships with **Telegram**, since it needs no business verification).
 Scheduler (ticks every 60s)
     → finds due task occurrences
     → enqueues notification jobs into Redis (BullMQ)
-    → Worker sends them via the Telegram Bot API
-    → Telegram poller long-polls for inbound DONE/SKIP replies
-    → task occurrence status updates, reflected on the web dashboard
+    → Worker sends them via the Telegram Bot API, with Done/Skip/Snooze buttons
+    → Telegram poller long-polls for inbound commands and button presses
+    → task occurrence status updates, and a reply is always sent back
+    → morning/evening digests sent automatically per user's local time
 ```
 
 Four long-lived processes plus Postgres and Redis. See
@@ -31,7 +34,7 @@ bare-IP VPS).
 - **Auth.js** (`next-auth`) for authentication
 - **PostgreSQL** + **Drizzle ORM**
 - **Redis** + **BullMQ** for the notification job queue
-- **Telegram Bot API** for reminders and two-way (DONE/SKIP) interaction
+- **Telegram Bot API** for reminders (with inline buttons) and full two-way interaction (commands, digests, task creation)
 - **Tailwind CSS**
 - **Zod** for request/schema validation
 - Package manager: **Bun**
@@ -78,11 +81,12 @@ Run the web app plus the three background processes (each in its own terminal):
 bun run dev              # Next.js dev server — http://localhost:3000
 bun run scheduler        # enqueues due reminders every 60s
 bun run worker           # sends queued reminders via Telegram
-bun run telegram-poller  # listens for inbound DONE/SKIP replies
+bun run telegram-poller  # listens for inbound commands and button presses
 ```
 
 Sign up in the web app, then go to **Settings** and paste your Telegram chat
 ID (message **@userinfobot** to get it) so reminders have somewhere to go.
+Then message your bot `HELP` (or `/help`) to see the full command list.
 
 ## Scripts
 

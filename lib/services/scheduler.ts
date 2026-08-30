@@ -1,7 +1,11 @@
 import { and, eq, gte, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { notificationJobs, taskOccurrences, tasks } from "@/lib/db/schema";
+import { notificationJobs, taskOccurrences, tasks, users } from "@/lib/db/schema";
 import { notificationQueue } from "@/lib/queue/notification-queue";
+import { sendTelegramText } from "@/lib/notifications/telegram-bot";
+import { buildEveningDigest, buildMorningDigest } from "./telegram-digest";
+import { formatTimeInTz } from "@/lib/utils/format";
+import { todayInTz } from "@/lib/utils/tz";
 import {
   generateOccurrencesForAllUsers,
   markMissedOccurrencesForAllUsers,
@@ -88,6 +92,42 @@ export async function runSchedulerTick() {
   }
 
   await markMissedOccurrencesForAllUsers();
+  await dispatchDigests();
 
   return { enqueued };
+}
+
+/**
+ * Sends the once-daily morning/evening digest to each user once their local
+ * clock passes their configured digest time. Dedupes via lastMorningDigestDate
+ * / lastEveningDigestDate so a restart or a slow tick can't double-send —
+ * the date check also means a missed tick still catches up later that day.
+ */
+async function dispatchDigests() {
+  const allUsers = await db.select().from(users);
+
+  for (const user of allUsers) {
+    if (!user.digestsEnabled || !user.telegramChatId) continue;
+
+    const todayStr = todayInTz(user.timezone);
+    const nowLocal = formatTimeInTz(new Date(), user.timezone);
+
+    if (nowLocal >= user.morningDigestTime && user.lastMorningDigestDate !== todayStr) {
+      const text = await buildMorningDigest(user.id, user.name, user.timezone);
+      if (text) await sendTelegramText(user.telegramChatId, text);
+      await db
+        .update(users)
+        .set({ lastMorningDigestDate: todayStr })
+        .where(eq(users.id, user.id));
+    }
+
+    if (nowLocal >= user.eveningDigestTime && user.lastEveningDigestDate !== todayStr) {
+      const text = await buildEveningDigest(user.id, user.name);
+      if (text) await sendTelegramText(user.telegramChatId, text);
+      await db
+        .update(users)
+        .set({ lastEveningDigestDate: todayStr })
+        .where(eq(users.id, user.id));
+    }
+  }
 }

@@ -41,6 +41,7 @@ export default async function SettingsPage() {
                 telegramChatId: user.telegramChatId,
                 remindBeforeMinutes: user.notificationPreferences.remindBeforeMinutes,
               }}
+              botUsername={process.env.TELEGRAM_BOT_USERNAME}
             />
           )}
         </div>

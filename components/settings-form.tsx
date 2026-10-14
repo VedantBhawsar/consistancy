@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { HelpCircle, ExternalLink, Copy, Check } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export type SettingsValues = {
   name: string;
@@ -18,12 +24,25 @@ const REMINDER_OPTIONS = [
   { value: 30, label: "30 min before" },
 ];
 
-export function SettingsForm({ initial }: { initial: SettingsValues }) {
+export function SettingsForm({
+  initial,
+  botUsername,
+}: {
+  initial: SettingsValues;
+  botUsername?: string;
+}) {
   const router = useRouter();
   const [values, setValues] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [copiedBot, setCopiedBot] = useState(false);
+
+  function copyBotHandle() {
+    navigator.clipboard.writeText("@userinfobot");
+    setCopiedBot(true);
+    setTimeout(() => setCopiedBot(false), 2000);
+  }
 
   function toggleReminder(minutes: number) {
     setValues((v) => ({
@@ -100,9 +119,151 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
         </span>
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Telegram chat ID
+      <div className="flex flex-col gap-1.5 text-sm">
+        <div className="flex items-center justify-between">
+          <label htmlFor="telegramChatId" className="cursor-pointer font-medium text-[var(--ink)]">
+            Telegram chat ID
+          </label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded text-xs font-medium text-[var(--brass)] hover:underline focus:outline-none"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+                <span>How to get this?</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              side="bottom"
+              sideOffset={8}
+              className="w-[340px] sm:w-[380px] p-4 text-xs"
+            >
+              <div className="space-y-3">
+                <div className="border-b border-[var(--rule)] pb-2.5">
+                  <h4 className="font-semibold text-sm text-[var(--ink)]">
+                    Finding your Telegram Chat ID
+                  </h4>
+                  <p className="mt-0.5 text-[var(--ink-muted)]">
+                    Follow these steps to receive reminders on Telegram:
+                  </p>
+                </div>
+
+                <ol className="space-y-3">
+                  <li className="flex items-start gap-2.5">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--brass-soft)] font-bold text-[11px] text-[var(--ink)]">
+                      1
+                    </span>
+                    <div className="flex-1 leading-relaxed">
+                      <span className="font-medium text-[var(--ink)]">
+                        Open @userinfobot
+                      </span>
+                      <p className="mt-0.5 text-[var(--ink-muted)]">
+                        Search for{" "}
+                        <span className="font-mono font-medium text-[var(--ink)]">@userinfobot</span>{" "}
+                        in Telegram or click{" "}
+                        <a
+                          href="https://t.me/userinfobot"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-0.5 text-[var(--brass)] underline hover:opacity-80"
+                        >
+                          t.me/userinfobot
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </p>
+                      <button
+                        type="button"
+                        onClick={copyBotHandle}
+                        className="mt-1 inline-flex items-center gap-1 rounded border border-[var(--rule)] bg-[var(--bg)] px-2 py-0.5 text-[11px] text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
+                      >
+                        {copiedBot ? (
+                          <>
+                            <Check className="h-3 w-3 text-[var(--success)]" />
+                            <span className="text-[var(--success)]">Copied username</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3 w-3" />
+                            <span>Copy @userinfobot</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </li>
+
+                  <li className="flex items-start gap-2.5">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--brass-soft)] font-bold text-[11px] text-[var(--ink)]">
+                      2
+                    </span>
+                    <div className="flex-1 leading-relaxed">
+                      <span className="font-medium text-[var(--ink)]">
+                        Find your numeric ID
+                      </span>
+                      <p className="mt-0.5 text-[var(--ink-muted)]">
+                        Tap <strong>Start</strong> (or send any message). The bot will reply with your profile info. Copy the numeric <strong>Id</strong> (e.g., <code>123456789</code>).
+                      </p>
+                    </div>
+                  </li>
+
+                  <li className="flex items-start gap-2.5">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--brass-soft)] font-bold text-[11px] text-[var(--ink)]">
+                      3
+                    </span>
+                    <div className="flex-1 leading-relaxed">
+                      <span className="font-medium text-[var(--ink)]">
+                        Paste your ID below
+                      </span>
+                      <p className="mt-0.5 text-[var(--ink-muted)]">
+                        Enter that numeric ID into the <strong>Telegram chat ID</strong> field.
+                      </p>
+                    </div>
+                  </li>
+
+                  <li className="flex items-start gap-2.5">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--brass-soft)] font-bold text-[11px] text-[var(--ink)]">
+                      4
+                    </span>
+                    <div className="flex-1 leading-relaxed">
+                      <span className="font-medium text-[var(--ink)]">
+                        Start your reminder bot
+                      </span>
+                      <p className="mt-0.5 text-[var(--ink-muted)]">
+                        {botUsername ? (
+                          <>
+                            Open{" "}
+                            <a
+                              href={`https://t.me/${botUsername}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-0.5 text-[var(--brass)] underline hover:opacity-80"
+                            >
+                              @{botUsername}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>{" "}
+                            and tap <strong>Start</strong>.
+                          </>
+                        ) : (
+                          "Open your reminder bot in Telegram and tap Start (or send /start)."
+                        )}{" "}
+                        Bots cannot send messages to users until you have started a conversation with them first.
+                      </p>
+                    </div>
+                  </li>
+                </ol>
+
+                <div className="rounded-md border border-[var(--rule)] bg-[var(--bg)] p-2.5 text-[11px] text-[var(--ink-muted)]">
+                  <span className="font-semibold text-[var(--ink)]">💡 Once connected:</span>{" "}
+                  You will receive reminders automatically with Done, Skip, and Snooze buttons, plus daily morning &amp; evening digests.
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+
         <input
+          id="telegramChatId"
           value={values.telegramChatId ?? ""}
           onChange={(e) =>
             setValues((v) => ({ ...v, telegramChatId: e.target.value }))
@@ -113,7 +274,7 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
         <span className="text-xs text-[var(--ink-muted)]">
           Message the bot, then message @userinfobot to get your numeric chat ID.
         </span>
-      </label>
+      </div>
 
       <div className="flex flex-col gap-2">
         <span className="text-sm">Default reminder timing</span>

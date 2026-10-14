@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { SignOutButton } from "./sign-out-button";
+import { ThemeToggle } from "./theme-toggle";
 
 const LINKS = [
   { href: "/", label: "Today" },
@@ -34,14 +35,15 @@ export async function AppNav() {
             ))}
           </nav>
         </div>
-        {session?.user && (
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span className="hidden sm:inline font-medium text-foreground">
+        <div className="flex items-center gap-2">
+          {session?.user && (
+            <span className="hidden sm:inline text-sm font-medium text-foreground mr-1">
               {session.user.name}
             </span>
-            <SignOutButton />
-          </div>
-        )}
+          )}
+          <ThemeToggle />
+          {session?.user && <SignOutButton />}
+        </div>
       </div>
       <nav className="flex gap-5 overflow-x-auto border-t border-border px-4 py-2.5 text-sm font-medium text-muted-foreground sm:hidden">
         {LINKS.map((link) => (

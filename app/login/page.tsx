@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 function LoginForm() {
   const router = useRouter();
@@ -43,7 +44,10 @@ function LoginForm() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-sm flex-1 flex-col justify-center px-4 py-16">
+    <div className="relative mx-auto flex min-h-screen w-full max-w-sm flex-1 flex-col justify-center px-4 py-16">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <Card>
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold tracking-tight">

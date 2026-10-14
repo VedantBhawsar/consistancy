@@ -102,11 +102,11 @@ export default async function ProgressPage() {
 
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
-    <Card className="p-4">
-      <p className="font-mono text-2xl font-bold tabular-nums text-foreground">
+    <Card className="p-4 justify-between gap-1 shadow-sm">
+      <p className="font-mono text-2xl font-bold tracking-tight tabular-nums text-foreground">
         {value}
       </p>
-      <p className="mt-1 text-xs text-muted-foreground">{label}</p>
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
     </Card>
   );
 }

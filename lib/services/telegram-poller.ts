@@ -56,7 +56,10 @@ export async function pollTelegramUpdates(
       try {
         const reply = await handleCallbackQuery(String(chatId), cbData);
         await answerTelegramCallback(update.callback_query.id);
-        await sendTelegramText(String(chatId), reply);
+        await sendTelegramText(String(chatId), reply.text, {
+          inlineKeyboard: reply.inlineKeyboard,
+          replyKeyboard: reply.replyKeyboard,
+        });
       } catch (err) {
         console.error("Failed to handle Telegram callback query", err);
         await answerTelegramCallback(update.callback_query.id, "Something went wrong.");
@@ -70,7 +73,10 @@ export async function pollTelegramUpdates(
 
     try {
       const reply = await handleInboundCommand(String(chatId), text);
-      await sendTelegramText(String(chatId), reply);
+      await sendTelegramText(String(chatId), reply.text, {
+        inlineKeyboard: reply.inlineKeyboard,
+        replyKeyboard: reply.replyKeyboard,
+      });
     } catch (err) {
       console.error("Failed to handle inbound Telegram command", err);
       await sendTelegramText(String(chatId), "Something went wrong handling that — please try again.");

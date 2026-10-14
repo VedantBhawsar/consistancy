@@ -29,7 +29,7 @@ export class TelegramProvider implements NotificationProvider {
             inline_keyboard: [
               [
                 { text: "✅ Done", callback_data: `done:${message.templateData.occurrenceId}` },
-                { text: "⏭ Skip", callback_data: `skip:${message.templateData.occurrenceId}` },
+                { text: "❌ Reject", callback_data: `reject:${message.templateData.occurrenceId}` },
                 { text: "⏰ Snooze 10m", callback_data: `snooze:${message.templateData.occurrenceId}` },
               ],
             ],

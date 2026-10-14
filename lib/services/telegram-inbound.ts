@@ -15,15 +15,27 @@ import {
 import { createTask } from "./tasks";
 import { generateOccurrencesForTask } from "./occurrences";
 import type { RecurrenceInput } from "./recurrence";
+import type { InlineKeyboard, ReplyKeyboard } from "@/lib/notifications/telegram-bot";
+
+export type InboundResponse = {
+  text: string;
+  inlineKeyboard?: InlineKeyboard;
+  replyKeyboard?: ReplyKeyboard;
+};
+
+export const DEFAULT_REPLY_KEYBOARD: ReplyKeyboard = [
+  [{ text: "✅ Done" }, { text: "❌ Reject" }],
+  [{ text: "📋 Today" }, { text: "⏰ Next" }, { text: "🔥 Status" }],
+];
 
 const HELP_TEXT = [
   "Commands (with or without a leading /):",
   "",
+  "DONE — mark your current task done (or tap ✅ Done)",
+  "REJECT / SKIP — reject or skip your current task (or tap ❌ Reject)",
+  "NEXT — your next pending task with Done/Reject options",
   "TODAY — full schedule for today",
   "STATUS — today's progress % and streak",
-  "NEXT — your next pending task",
-  "DONE — mark your next pending task done",
-  "SKIP — skip your next pending task",
   "SNOOZE <minutes> — delay the next reminder (default 10)",
   "TASKS — list your active recurring tasks",
   "NEWTASK <title> | <HH:MM> | <minutes> | <CATEGORY> | <RECURRENCE>",
@@ -33,7 +45,7 @@ const HELP_TEXT = [
   "",
   `Categories: ${CATEGORIES.join(", ")}`,
   "",
-  "Reminders also come with Done / Skip / Snooze buttons — tap instead of typing.",
+  "You can also tap the interactive buttons below instead of typing.",
 ].join("\n");
 
 async function getUserByChatId(chatId: string) {
@@ -50,7 +62,7 @@ function statusMark(status: string): string {
     case "COMPLETED":
       return "✓";
     case "SKIPPED":
-      return "⏭";
+      return "✗";
     case "MISSED":
       return "✗";
     case "CANCELLED":
@@ -60,55 +72,118 @@ function statusMark(status: string): string {
   }
 }
 
-async function formatToday(userId: string, timezone: string): Promise<string> {
+function buildTaskInlineButtons(occurrenceId: string): InlineKeyboard {
+  return [
+    [
+      { text: "✅ Done", callback_data: `done:${occurrenceId}` },
+      { text: "❌ Reject", callback_data: `reject:${occurrenceId}` },
+      { text: "⏰ Snooze 10m", callback_data: `snooze:${occurrenceId}` },
+    ],
+  ];
+}
+
+async function formatToday(userId: string, timezone: string): Promise<InboundResponse> {
   const { occurrences } = await getTodayOccurrences(userId);
-  if (occurrences.length === 0) return "No tasks scheduled for today.";
+  if (occurrences.length === 0) {
+    return {
+      text: "No tasks scheduled for today. Build your routine on the web dashboard to see them here.",
+      replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+    };
+  }
 
   const lines = occurrences.map(
     (o) => `${formatTimeInTz(o.scheduledAt, timezone)}  ${statusMark(o.status)} ${o.title}`
   );
-  return ["Today's Schedule", "", ...lines].join("\n");
+
+  const nextPending = occurrences.find((o) => o.status === "PENDING");
+  let inlineKeyboard: InlineKeyboard | undefined;
+
+  if (nextPending) {
+    inlineKeyboard = buildTaskInlineButtons(nextPending.id);
+  }
+
+  return {
+    text: ["Today's Schedule", "", ...lines].join("\n"),
+    inlineKeyboard,
+    replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+  };
 }
 
-async function formatStatus(userId: string): Promise<string> {
+async function formatStatus(userId: string): Promise<InboundResponse> {
   const progress = await getDailyProgress(userId);
   const streaks = await getStreaks(userId);
-  return [
+  const { occurrences } = await getTodayOccurrences(userId);
+  const nextPending = occurrences.find((o) => o.status === "PENDING");
+
+  const text = [
     `Today: ${progress.completed}/${progress.total} done (${progress.completionRate}%)`,
     asciiProgressBar(progress.completionRate),
     `🔥 Current streak: ${streaks.currentStreak} day${streaks.currentStreak === 1 ? "" : "s"} (longest: ${streaks.longestStreak})`,
   ].join("\n");
+
+  return {
+    text,
+    inlineKeyboard: nextPending ? buildTaskInlineButtons(nextPending.id) : undefined,
+    replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+  };
 }
 
-async function formatNext(userId: string, timezone: string): Promise<string> {
+async function formatNext(userId: string, timezone: string): Promise<InboundResponse> {
   const { occurrences } = await getTodayOccurrences(userId);
   const next = occurrences.find((o) => o.status === "PENDING");
-  if (!next) return "Nothing left today — you're done! 🎉";
-  return [
-    `⏰ ${next.title}`,
-    `Scheduled: ${formatTimeInTz(next.scheduledAt, timezone)}`,
-    `Duration: ${next.durationMinutes} minutes`,
-    `Category: ${categoryLabel(next.category)}`,
-  ].join("\n");
+  if (!next) {
+    return {
+      text: "Nothing left pending today — you're all done! 🎉",
+      replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+    };
+  }
+
+  return {
+    text: [
+      `⏰ ${next.title}`,
+      `Scheduled: ${formatTimeInTz(next.scheduledAt, timezone)}`,
+      `Duration: ${next.durationMinutes} minutes`,
+      `Category: ${categoryLabel(next.category)}`,
+      "",
+      "Choose an option below:",
+    ].join("\n"),
+    inlineKeyboard: buildTaskInlineButtons(next.id),
+    replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+  };
 }
 
-async function formatTasks(userId: string): Promise<string> {
+async function formatTasks(userId: string): Promise<InboundResponse> {
   const rows = await db.select().from(tasks).where(eq(tasks.userId, userId));
   const active = rows.filter((t) => t.isActive);
-  if (active.length === 0) return "You have no active tasks.";
+  if (active.length === 0) {
+    return {
+      text: "You have no active tasks in your routine.",
+      replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+    };
+  }
 
   const lines = active
     .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime))
     .map((t) => `${t.scheduledTime.slice(0, 5)}  ${t.title} (${categoryLabel(t.category)})`);
-  return ["Active Tasks", "", ...lines].join("\n");
+
+  return {
+    text: ["Active Tasks", "", ...lines].join("\n"),
+    replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+  };
 }
 
-async function handleDone(userId: string): Promise<string> {
+async function handleDone(userId: string): Promise<InboundResponse> {
   const { occurrences } = await getTodayOccurrences(userId);
-  const next = occurrences.find((o) => o.status === "PENDING");
-  if (!next) return "Nothing pending to mark done right now.";
+  // Find pending first, or missed (if user completed it late)
+  const target = occurrences.find((o) => o.status === "PENDING") || occurrences.find((o) => o.status === "MISSED");
+  if (!target) {
+    return {
+      text: "Nothing pending to mark done right now.",
+      replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+    };
+  }
 
-  await completeTaskOccurrence(userId, next.taskId, next.id);
+  await completeTaskOccurrence(userId, target.taskId, target.id);
   const progress = await getDailyProgress(userId);
   const streaks = await getStreaks(userId);
 
@@ -121,36 +196,87 @@ async function handleDone(userId: string): Promise<string> {
   ];
   const commendation = commendations[Math.floor(Math.random() * commendations.length)];
 
-  return [
-    `✅ Marked done: ${next.title}`,
+  // Look for remaining pending occurrences
+  const remainingOccurrences = (await getTodayOccurrences(userId)).occurrences;
+  const nextPending = remainingOccurrences.find((o) => o.status === "PENDING");
+
+  const lines = [
+    `✅ Marked done: ${target.title}`,
     `${commendation}`,
     "",
     `Today: ${progress.completed}/${progress.total} completed (${progress.completionRate}%)`,
     asciiProgressBar(progress.completionRate),
     `🔥 Current streak: ${streaks.currentStreak} day${streaks.currentStreak === 1 ? "" : "s"}`,
-  ].join("\n");
+  ];
+
+  let inlineKeyboard: InlineKeyboard | undefined;
+  if (nextPending) {
+    lines.push("");
+    lines.push(`Next up: ⏰ ${nextPending.title} (${nextPending.durationMinutes} min)`);
+    inlineKeyboard = buildTaskInlineButtons(nextPending.id);
+  }
+
+  return {
+    text: lines.join("\n"),
+    inlineKeyboard,
+    replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+  };
 }
 
-async function handleSkip(userId: string): Promise<string> {
+async function handleReject(userId: string): Promise<InboundResponse> {
   const { occurrences } = await getTodayOccurrences(userId);
-  const next = occurrences.find((o) => o.status === "PENDING");
-  if (!next) return "Nothing pending to skip right now.";
+  const target = occurrences.find((o) => o.status === "PENDING") || occurrences.find((o) => o.status === "MISSED");
+  if (!target) {
+    return {
+      text: "Nothing pending to reject or skip right now.",
+      replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+    };
+  }
 
-  await skipTaskOccurrence(userId, next.taskId, next.id);
+  await skipTaskOccurrence(userId, target.taskId, target.id);
   const progress = await getDailyProgress(userId);
-  return `⏭ Skipped: ${next.title}\n${progress.completed}/${progress.total} completed today.`;
+
+  const remainingOccurrences = (await getTodayOccurrences(userId)).occurrences;
+  const nextPending = remainingOccurrences.find((o) => o.status === "PENDING");
+
+  const lines = [
+    `❌ Rejected / Skipped: ${target.title}`,
+    `${progress.completed}/${progress.total} completed today.`,
+  ];
+
+  let inlineKeyboard: InlineKeyboard | undefined;
+  if (nextPending) {
+    lines.push("");
+    lines.push(`Next up: ⏰ ${nextPending.title} (${nextPending.durationMinutes} min)`);
+    inlineKeyboard = buildTaskInlineButtons(nextPending.id);
+  }
+
+  return {
+    text: lines.join("\n"),
+    inlineKeyboard,
+    replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+  };
 }
 
-async function handleSnooze(userId: string, minutesArg: string): Promise<string> {
+async function handleSnooze(userId: string, minutesArg: string): Promise<InboundResponse> {
   const parsed = parseInt(minutesArg, 10);
   const minutes = Number.isFinite(parsed) ? Math.min(180, Math.max(1, parsed)) : 10;
 
   const { occurrences } = await getTodayOccurrences(userId);
   const next = occurrences.find((o) => o.status === "PENDING");
-  if (!next) return "Nothing pending to snooze right now.";
+  if (!next) {
+    return {
+      text: "Nothing pending to snooze right now.",
+      replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+    };
+  }
 
   await snoozeOccurrence(next.id, minutes);
-  return `⏰ Snoozed "${next.title}" for ${minutes} minute${minutes === 1 ? "" : "s"}.`;
+  return {
+    text: `⏰ Snoozed "${next.title}" for ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+    inlineKeyboard: buildTaskInlineButtons(next.id),
+    replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+  };
 }
 
 /** Queues a one-off reminder job `minutes` from now, reusing the normal worker/provider pipeline. */
@@ -199,30 +325,32 @@ function parseRecurrence(raw: string): RecurrenceInput | null {
 
 const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
-async function handleNewTask(userId: string, rest: string): Promise<string> {
+async function handleNewTask(userId: string, rest: string): Promise<InboundResponse> {
   const usage =
     'Format: NEWTASK <title> | <HH:MM> | <minutes> | <CATEGORY> | <RECURRENCE>\nExample: NEWTASK Evening Walk | 18:30 | 20 | PERSONAL | DAILY\nRECURRENCE: DAILY, WEEKDAYS, WEEKENDS, DAYS:0,2,4, or WEEKLY:3';
 
   const parts = rest.split("|").map((p) => p.trim());
-  if (parts.length !== 5) return usage;
+  if (parts.length !== 5) return { text: usage, replyKeyboard: DEFAULT_REPLY_KEYBOARD };
   const [title, time, durationStr, categoryRaw, recurrenceRaw] = parts;
 
-  if (!title) return usage;
-  if (!TIME_REGEX.test(time)) return `Invalid time "${time}" — use 24-hour HH:MM, e.g. 18:30.`;
+  if (!title) return { text: usage, replyKeyboard: DEFAULT_REPLY_KEYBOARD };
+  if (!TIME_REGEX.test(time)) {
+    return { text: `Invalid time "${time}" — use 24-hour HH:MM, e.g. 18:30.`, replyKeyboard: DEFAULT_REPLY_KEYBOARD };
+  }
 
   const durationMinutes = parseInt(durationStr, 10);
   if (!Number.isFinite(durationMinutes) || durationMinutes < 5 || durationMinutes > 1440) {
-    return `Invalid duration "${durationStr}" — use minutes between 5 and 1440.`;
+    return { text: `Invalid duration "${durationStr}" — use minutes between 5 and 1440.`, replyKeyboard: DEFAULT_REPLY_KEYBOARD };
   }
 
   const category = categoryRaw.toUpperCase();
   if (!(CATEGORIES as readonly string[]).includes(category)) {
-    return `Unknown category "${categoryRaw}". Use one of: ${CATEGORIES.join(", ")}`;
+    return { text: `Unknown category "${categoryRaw}". Use one of: ${CATEGORIES.join(", ")}`, replyKeyboard: DEFAULT_REPLY_KEYBOARD };
   }
 
   const recurrence = parseRecurrence(recurrenceRaw);
   if (!recurrence) {
-    return `Unknown recurrence "${recurrenceRaw}". Use DAILY, WEEKDAYS, WEEKENDS, DAYS:0,2,4, or WEEKLY:3.`;
+    return { text: `Unknown recurrence "${recurrenceRaw}". Use DAILY, WEEKDAYS, WEEKENDS, DAYS:0,2,4, or WEEKLY:3.`, replyKeyboard: DEFAULT_REPLY_KEYBOARD };
   }
 
   try {
@@ -238,33 +366,74 @@ async function handleNewTask(userId: string, rest: string): Promise<string> {
       isActive: true,
     });
     await generateOccurrencesForTask(userId, task.id);
-    return `✅ Created "${title}" at ${time} (${recurrenceRaw.toUpperCase()}).`;
+    return { text: `✅ Created "${title}" at ${time} (${recurrenceRaw.toUpperCase()}).`, replyKeyboard: DEFAULT_REPLY_KEYBOARD };
   } catch (err) {
     const message = err instanceof AppError ? err.message : "Couldn't create the task.";
-    return `❌ ${message}`;
+    return { text: `❌ ${message}`, replyKeyboard: DEFAULT_REPLY_KEYBOARD };
   }
 }
 
-/**
- * Handles inbound Telegram text messages. Always returns a reply string —
- * every message gets feedback, including unrecognized ones — so the poller
- * can send something back rather than going silent.
- */
-export async function handleInboundCommand(chatId: string, text: string): Promise<string> {
-  const match = text.trim().replace(/\n/g, " ").match(/^\/?(\S+)\s*(.*)$/);
-  const command = (match?.[1] ?? "").toUpperCase();
+/** Parses user command or natural response intent (e.g. "done", "reject", "skip", "✅ Done") */
+function parseIntent(text: string): { command: string; rest: string } {
+  const cleaned = text.trim();
+  // Strip common emojis like ✅, ❌, ⏰, 📋, etc.
+  const withoutEmoji = cleaned
+    .replace(/^[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/u, "")
+    .trim();
+
+  const match = withoutEmoji.replace(/\n/g, " ").match(/^\/?(\S+)\s*(.*)$/);
+  const rawFirstWord = (match?.[1] ?? "").toUpperCase().replace(/[!.,?]/g, "");
   const rest = match?.[2] ?? "";
 
+  if (
+    ["DONE", "COMPLETE", "COMPLETED", "YES", "FINISH", "FINISHED"].includes(rawFirstWord) ||
+    /^(i'?m\s+done|task\s+done|done\s+with|marked?\s+done)/i.test(withoutEmoji)
+  ) {
+    return { command: "DONE", rest };
+  }
+
+  if (
+    ["REJECT", "REJECTED", "SKIP", "SKIPPED", "NO", "PASS", "CANCEL"].includes(rawFirstWord) ||
+    /^(reject\s+task|skip\s+task|not\s+done|can'?t\s+do)/i.test(withoutEmoji)
+  ) {
+    return { command: "REJECT", rest };
+  }
+
+  if (["TODAY", "SCHEDULE"].includes(rawFirstWord)) {
+    return { command: "TODAY", rest };
+  }
+
+  if (["NEXT", "UPCOMING"].includes(rawFirstWord)) {
+    return { command: "NEXT", rest };
+  }
+
+  if (["STATUS", "PROGRESS", "STREAK"].includes(rawFirstWord)) {
+    return { command: "STATUS", rest };
+  }
+
+  return { command: rawFirstWord, rest };
+}
+
+/**
+ * Handles inbound Telegram text messages. Always returns an InboundResponse with
+ * reply text and interactive buttons.
+ */
+export async function handleInboundCommand(chatId: string, text: string): Promise<InboundResponse> {
   const user = await getUserByChatId(chatId);
   if (!user) {
-    return "This Telegram chat isn't linked to a Consistancy account yet. Add this chat ID under Settings on the web dashboard.";
+    return {
+      text: "This Telegram chat isn't linked to a Consistancy account yet. Add this chat ID under Settings on your web dashboard to link it.",
+    };
   }
+
+  const { command, rest } = parseIntent(text);
 
   switch (command) {
     case "DONE":
       return handleDone(user.id);
+    case "REJECT":
     case "SKIP":
-      return handleSkip(user.id);
+      return handleReject(user.id);
     case "TODAY":
       return formatToday(user.id, user.timezone);
     case "STATUS":
@@ -279,19 +448,26 @@ export async function handleInboundCommand(chatId: string, text: string): Promis
       return handleNewTask(user.id, rest);
     case "HELP":
     case "START":
-      return HELP_TEXT;
+      return { text: HELP_TEXT, replyKeyboard: DEFAULT_REPLY_KEYBOARD };
     default:
-      return `Didn't recognize "${command}". Send HELP to see available commands.`;
+      return {
+        text: `Didn't recognize "${command}". You can use the buttons below or reply DONE / REJECT:`,
+        replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+      };
   }
 }
 
-/** Parses a button press (callback_data like "done:<occurrenceId>") and returns the reply text. */
-export async function handleCallbackQuery(chatId: string, data: string): Promise<string> {
+/** Parses a button press (callback_data like "done:<occurrenceId>") and returns the reply and next buttons. */
+export async function handleCallbackQuery(chatId: string, data: string): Promise<InboundResponse> {
   const [action, occurrenceId] = data.split(":");
-  if (!occurrenceId) return "Unrecognized button.";
+  if (!occurrenceId) {
+    return { text: "Unrecognized button.", replyKeyboard: DEFAULT_REPLY_KEYBOARD };
+  }
 
   const user = await getUserByChatId(chatId);
-  if (!user) return "This Telegram chat isn't linked to a Consistancy account.";
+  if (!user) {
+    return { text: "This Telegram chat isn't linked to a Consistancy account." };
+  }
 
   try {
     switch (action) {
@@ -308,28 +484,69 @@ export async function handleCallbackQuery(chatId: string, data: string): Promise
         ];
         const commendation = commendations[Math.floor(Math.random() * commendations.length)];
 
-        return [
-          `✅ Marked done via button!`,
+        const { occurrences } = await getTodayOccurrences(user.id);
+        const nextPending = occurrences.find((o) => o.status === "PENDING");
+
+        const lines = [
+          `✅ Marked done!`,
           `${commendation}`,
           "",
           `Today: ${progress.completed}/${progress.total} completed (${progress.completionRate}%)`,
           `🔥 Current streak: ${streaks.currentStreak} day${streaks.currentStreak === 1 ? "" : "s"}`,
-        ].join("\n");
+        ];
+
+        let inlineKeyboard: InlineKeyboard | undefined;
+        if (nextPending) {
+          lines.push("");
+          lines.push(`Next up: ⏰ ${nextPending.title} (${nextPending.durationMinutes} min)`);
+          inlineKeyboard = buildTaskInlineButtons(nextPending.id);
+        }
+
+        return {
+          text: lines.join("\n"),
+          inlineKeyboard,
+          replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+        };
       }
+      case "reject":
       case "skip": {
         await skipOccurrenceById(user.id, occurrenceId);
         const progress = await getDailyProgress(user.id);
-        return `⏭ Skipped via button.\n${progress.completed}/${progress.total} completed today.`;
+
+        const { occurrences } = await getTodayOccurrences(user.id);
+        const nextPending = occurrences.find((o) => o.status === "PENDING");
+
+        const lines = [
+          `❌ Rejected / Skipped.`,
+          `${progress.completed}/${progress.total} completed today.`,
+        ];
+
+        let inlineKeyboard: InlineKeyboard | undefined;
+        if (nextPending) {
+          lines.push("");
+          lines.push(`Next up: ⏰ ${nextPending.title} (${nextPending.durationMinutes} min)`);
+          inlineKeyboard = buildTaskInlineButtons(nextPending.id);
+        }
+
+        return {
+          text: lines.join("\n"),
+          inlineKeyboard,
+          replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+        };
       }
       case "snooze": {
         await snoozeOccurrence(occurrenceId, 10);
-        return "⏰ Snoozed for 10 minutes.";
+        return {
+          text: "⏰ Snoozed for 10 minutes.",
+          inlineKeyboard: buildTaskInlineButtons(occurrenceId),
+          replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+        };
       }
       default:
-        return "Unrecognized button.";
+        return { text: "Unrecognized button.", replyKeyboard: DEFAULT_REPLY_KEYBOARD };
     }
   } catch (err) {
     const message = err instanceof AppError ? err.message : "Something went wrong.";
-    return `❌ ${message}`;
+    return { text: `❌ ${message}`, replyKeyboard: DEFAULT_REPLY_KEYBOARD };
   }
 }

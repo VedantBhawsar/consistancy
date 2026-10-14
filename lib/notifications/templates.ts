@@ -8,16 +8,8 @@ export function reminderText({
   return [
     `⏰ ${taskTitle}`,
     "",
-    `Your scheduled task is starting at ${scheduledTime}.`,
+    `Your scheduled task starts at ${scheduledTime} (${durationMinutes} mins).`,
     "",
-    "Task:",
-    taskTitle,
-    "",
-    "Duration:",
-    `${durationMinutes} minutes`,
-    "",
-    "Reply:",
-    "DONE",
-    "SKIP",
+    "Choose an option below or reply with Done / Reject:",
   ].join("\n");
 }

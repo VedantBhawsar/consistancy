@@ -5,8 +5,9 @@ import { db } from "@/lib/db";
 import { tasks, users } from "@/lib/db/schema";
 import { AppError } from "@/lib/errors";
 import { completeTaskOccurrence } from "@/lib/services/completion";
-import { getDailyProgress, getStreaks } from "@/lib/services/progress";
+import { getDailyProgress, getStreaks, getTodayOccurrences } from "@/lib/services/progress";
 import { sendTelegramText } from "@/lib/notifications/telegram-bot";
+import { DEFAULT_REPLY_KEYBOARD } from "@/lib/services/telegram-inbound";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -57,16 +58,35 @@ export async function POST(request: Request, { params }: Params) {
     const taskTitle = task?.title || "Routine Task";
 
     if (user?.telegramChatId) {
-      const tgMessage = [
+      const { occurrences } = await getTodayOccurrences(session.user.id);
+      const nextPending = occurrences.find((o) => o.status === "PENDING" && o.id !== occurrence.id);
+
+      const lines = [
         `🎉 *Task Completed*: ${taskTitle}`,
         `${commendation}`,
         "",
         `Today: ${progress.completed}/${progress.total} completed (${progress.completionRate}%)`,
         `🔥 Current streak: ${streaks.currentStreak} day${streaks.currentStreak === 1 ? "" : "s"}`,
-      ].join("\n");
+      ];
+
+      let inlineKeyboard: { text: string; callback_data: string }[][] | undefined;
+      if (nextPending) {
+        lines.push("");
+        lines.push(`Next up: ⏰ ${nextPending.title} (${nextPending.durationMinutes} min)`);
+        inlineKeyboard = [
+          [
+            { text: "✅ Done", callback_data: `done:${nextPending.id}` },
+            { text: "❌ Reject", callback_data: `reject:${nextPending.id}` },
+            { text: "⏰ Snooze 10m", callback_data: `snooze:${nextPending.id}` },
+          ],
+        ];
+      }
 
       // Fire and forget telegram feedback message
-      sendTelegramText(user.telegramChatId, tgMessage).catch((err) => {
+      sendTelegramText(user.telegramChatId, lines.join("\n"), {
+        inlineKeyboard,
+        replyKeyboard: DEFAULT_REPLY_KEYBOARD,
+      }).catch((err) => {
         console.error("Failed to send completion feedback to Telegram", err);
       });
     }

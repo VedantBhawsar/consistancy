@@ -7,7 +7,14 @@
  * just logs instead of triggering BullMQ retries.
  */
 
-type InlineKeyboard = { text: string; callback_data: string }[][];
+export type InlineKeyboard = { text: string; callback_data: string }[][];
+export type ReplyKeyboard = { text: string }[][];
+
+export type SendTelegramOptions = {
+  inlineKeyboard?: InlineKeyboard;
+  replyKeyboard?: ReplyKeyboard;
+  parseMode?: "Markdown" | "HTML";
+};
 
 function botToken(): string | undefined {
   return process.env.TELEGRAM_BOT_TOKEN;
@@ -16,12 +23,27 @@ function botToken(): string | undefined {
 export async function sendTelegramText(
   chatId: string,
   text: string,
-  inlineKeyboard?: InlineKeyboard
+  optionsOrKeyboard?: InlineKeyboard | SendTelegramOptions
 ): Promise<void> {
   const token = botToken();
   if (!token) {
     console.log(`[telegram:mock] -> ${chatId}\n${text}\n`);
     return;
+  }
+
+  const options: SendTelegramOptions = Array.isArray(optionsOrKeyboard)
+    ? { inlineKeyboard: optionsOrKeyboard }
+    : optionsOrKeyboard ?? {};
+
+  let reply_markup: Record<string, unknown> | undefined;
+  if (options.inlineKeyboard && options.inlineKeyboard.length > 0) {
+    reply_markup = { inline_keyboard: options.inlineKeyboard };
+  } else if (options.replyKeyboard && options.replyKeyboard.length > 0) {
+    reply_markup = {
+      keyboard: options.replyKeyboard,
+      resize_keyboard: true,
+      one_time_keyboard: false,
+    };
   }
 
   try {
@@ -31,7 +53,8 @@ export async function sendTelegramText(
       body: JSON.stringify({
         chat_id: chatId,
         text,
-        ...(inlineKeyboard ? { reply_markup: { inline_keyboard: inlineKeyboard } } : {}),
+        ...(options.parseMode ? { parse_mode: options.parseMode } : {}),
+        ...(reply_markup ? { reply_markup } : {}),
       }),
     });
     if (!res.ok) {
@@ -73,6 +96,7 @@ export async function setTelegramCommands(): Promise<{ success: boolean; error?:
     { command: "status", description: "Today's progress and streak" },
     { command: "next", description: "Show your next pending task" },
     { command: "done", description: "Mark your next pending task done" },
+    { command: "reject", description: "Reject or skip your pending task" },
     { command: "skip", description: "Skip your next pending task" },
     { command: "snooze", description: "Delay the next reminder, e.g. /snooze 10" },
     { command: "tasks", description: "List your active recurring tasks" },

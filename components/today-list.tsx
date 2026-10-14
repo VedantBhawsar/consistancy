@@ -173,7 +173,7 @@ export function TodayList({
 
                     {/* Actions / Status badge */}
                     <div className="flex shrink-0 items-center gap-2">
-                      {occurrence.status === "PENDING" ? (
+                      {occurrence.status === "PENDING" && (
                         <>
                           <Button
                             size="sm"
@@ -181,7 +181,7 @@ export function TodayList({
                             disabled={pending === occurrence.id}
                             onClick={() => act(occurrence.taskId, occurrence.id, "skip")}
                           >
-                            Skip
+                            Reject
                           </Button>
                           <Button
                             size="sm"
@@ -191,30 +191,68 @@ export function TodayList({
                             Done
                           </Button>
                         </>
-                      ) : (
-                        <div className="flex items-center">
-                          {occurrence.status === "COMPLETED" && (
-                            <Badge variant="secondary" className="gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                              <CheckCircle2 className="size-3" />
-                              <span>Done</span>
-                            </Badge>
-                          )}
-                          {occurrence.status === "MISSED" && (
-                            <Badge variant="destructive" className="font-medium">
-                              Missed
-                            </Badge>
-                          )}
-                          {occurrence.status === "SKIPPED" && (
-                            <Badge variant="outline" className="font-medium text-muted-foreground">
-                              Skipped
-                            </Badge>
-                          )}
-                          {occurrence.status === "CANCELLED" && (
-                            <Badge variant="secondary" className="font-medium">
-                              Cancelled
-                            </Badge>
-                          )}
+                      )}
+
+                      {occurrence.status === "MISSED" && (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="destructive" className="font-medium">
+                            Missed
+                          </Badge>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={pending === occurrence.id}
+                            onClick={() => act(occurrence.taskId, occurrence.id, "skip")}
+                          >
+                            Reject
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={pending === occurrence.id}
+                            onClick={() => act(occurrence.taskId, occurrence.id, "complete")}
+                          >
+                            Done
+                          </Button>
                         </div>
+                      )}
+
+                      {occurrence.status === "COMPLETED" && (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                            <CheckCircle2 className="size-3" />
+                            <span>Done</span>
+                          </Badge>
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            className="text-xs text-muted-foreground hover:text-foreground"
+                            disabled={pending === occurrence.id}
+                            onClick={() => act(occurrence.taskId, occurrence.id, "skip")}
+                          >
+                            Undo
+                          </Button>
+                        </div>
+                      )}
+
+                      {occurrence.status === "SKIPPED" && (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="font-medium text-muted-foreground">
+                            Rejected
+                          </Badge>
+                          <Button
+                            size="sm"
+                            disabled={pending === occurrence.id}
+                            onClick={() => act(occurrence.taskId, occurrence.id, "complete")}
+                          >
+                            Done
+                          </Button>
+                        </div>
+                      )}
+
+                      {occurrence.status === "CANCELLED" && (
+                        <Badge variant="secondary" className="font-medium">
+                          Cancelled
+                        </Badge>
                       )}
                     </div>
                   </div>

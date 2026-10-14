@@ -5,10 +5,11 @@ import { useState } from "react";
 import { Sparkles, X, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { formatTimeInTz, categoryLabel } from "@/lib/utils/format";
 import { useNow } from "@/lib/hooks/use-now";
+import { cn } from "@/lib/utils";
 
 export type TodayOccurrence = {
   id: string;
@@ -109,117 +110,120 @@ export function TodayList({
         </Alert>
       )}
 
-      <ol className="relative flex flex-col">
-        {occurrences.map((occurrence, i) => {
+      <ul className="flex flex-col gap-3">
+        {occurrences.map((occurrence) => {
           const scheduledMs = occurrence.scheduledAt.getTime();
           const isActiveNow =
             occurrence.status === "PENDING" &&
             now >= scheduledMs &&
             now <= scheduledMs + occurrence.durationMinutes * 60_000;
           const isNext = !isActiveNow && occurrence.id === nextPendingId;
-          const isLast = i === occurrences.length - 1;
 
           return (
-            <li key={occurrence.id} className="relative flex gap-4 pb-6">
-              {!isLast && (
-                <span
-                  className="absolute left-[27px] top-7 bottom-0 w-px bg-border"
-                  aria-hidden
-                />
-              )}
-
-              <div className="flex w-14 shrink-0 flex-col items-end pt-1">
-                <span className="font-mono text-sm font-medium tabular-nums text-foreground">
-                  {formatTimeInTz(occurrence.scheduledAt, timezone)}
-                </span>
-              </div>
-
-              <span
-                className={`relative top-2 size-3 shrink-0 rounded-full border-2 bg-background transition-colors ${
-                  occurrence.status === "COMPLETED"
-                    ? "border-emerald-600 bg-emerald-600"
-                    : occurrence.status === "MISSED"
-                      ? "border-destructive bg-destructive"
-                      : isActiveNow
-                        ? "border-primary bg-primary animate-pulse"
-                        : "border-border"
-                }`}
-                aria-hidden
-              />
-
-              <div
-                className={`flex flex-1 flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border px-4 py-3 transition-colors ${
-                  isActiveNow
-                    ? "border-primary bg-primary/5"
-                    : isNext
-                      ? "border-border bg-card shadow-xs"
-                      : "border-transparent bg-muted/20"
-                }`}
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p
-                      className={`truncate text-sm font-medium ${
-                        occurrence.status === "MISSED" || occurrence.status === "SKIPPED"
-                          ? "text-muted-foreground line-through"
-                          : "text-foreground"
-                      }`}
-                    >
-                      {occurrence.title}
-                    </p>
-                    {isActiveNow && (
-                      <Badge variant="default" className="text-[10px]">
-                        Active Now
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {categoryLabel(occurrence.category)} · {occurrence.durationMinutes} min
-                  </p>
-                </div>
-
-                {occurrence.status === "PENDING" ? (
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={pending === occurrence.id}
-                      onClick={() => act(occurrence.taskId, occurrence.id, "skip")}
-                    >
-                      Skip
-                    </Button>
-                    <Button
-                      size="sm"
-                      disabled={pending === occurrence.id}
-                      onClick={() => act(occurrence.taskId, occurrence.id, "complete")}
-                    >
-                      Done
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="shrink-0">
-                    {occurrence.status === "COMPLETED" && (
-                      <Badge variant="secondary" className="gap-1 text-emerald-600 dark:text-emerald-400">
-                        <CheckCircle2 className="size-3" />
-                        <span>Done</span>
-                      </Badge>
-                    )}
-                    {occurrence.status === "MISSED" && (
-                      <Badge variant="destructive">Missed</Badge>
-                    )}
-                    {occurrence.status === "SKIPPED" && (
-                      <Badge variant="outline">Skipped</Badge>
-                    )}
-                    {occurrence.status === "CANCELLED" && (
-                      <Badge variant="secondary">Cancelled</Badge>
-                    )}
-                  </div>
+            <li key={occurrence.id}>
+              <Card
+                className={cn(
+                  "transition-all",
+                  isActiveNow && "border-primary ring-1 ring-primary/20 bg-primary/5 shadow-xs",
+                  isNext && "border-border bg-card shadow-xs",
+                  occurrence.status === "COMPLETED" && "bg-card/70 border-border/70",
+                  occurrence.status === "MISSED" && "bg-card border-border shadow-xs",
+                  occurrence.status === "SKIPPED" && "bg-muted/20 border-border/60 opacity-80"
                 )}
-              </div>
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      {/* Status indicator dot */}
+                      <span
+                        className={cn(
+                          "size-2.5 shrink-0 rounded-full",
+                          occurrence.status === "COMPLETED" && "bg-emerald-600 dark:bg-emerald-400",
+                          occurrence.status === "MISSED" && "bg-destructive",
+                          isActiveNow && "bg-primary animate-pulse ring-4 ring-primary/20",
+                          occurrence.status === "PENDING" && !isActiveNow && "bg-muted-foreground/40",
+                          occurrence.status === "SKIPPED" && "bg-muted-foreground/30",
+                          occurrence.status === "CANCELLED" && "bg-muted-foreground/30"
+                        )}
+                        aria-hidden
+                      />
+
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+                            {formatTimeInTz(occurrence.scheduledAt, timezone)}
+                          </span>
+                          <span className="text-sm font-medium text-foreground">
+                            {occurrence.title}
+                          </span>
+                          {isActiveNow && (
+                            <Badge variant="default" className="text-[10px]">
+                              Active Now
+                            </Badge>
+                          )}
+                          <Badge variant="secondary" className="text-[10px]">
+                            {categoryLabel(occurrence.category)}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {occurrence.durationMinutes} min
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Actions / Status badge */}
+                    <div className="flex shrink-0 items-center gap-2">
+                      {occurrence.status === "PENDING" ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={pending === occurrence.id}
+                            onClick={() => act(occurrence.taskId, occurrence.id, "skip")}
+                          >
+                            Skip
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={pending === occurrence.id}
+                            onClick={() => act(occurrence.taskId, occurrence.id, "complete")}
+                          >
+                            Done
+                          </Button>
+                        </>
+                      ) : (
+                        <div className="flex items-center">
+                          {occurrence.status === "COMPLETED" && (
+                            <Badge variant="secondary" className="gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                              <CheckCircle2 className="size-3" />
+                              <span>Done</span>
+                            </Badge>
+                          )}
+                          {occurrence.status === "MISSED" && (
+                            <Badge variant="destructive" className="font-medium">
+                              Missed
+                            </Badge>
+                          )}
+                          {occurrence.status === "SKIPPED" && (
+                            <Badge variant="outline" className="font-medium text-muted-foreground">
+                              Skipped
+                            </Badge>
+                          )}
+                          {occurrence.status === "CANCELLED" && (
+                            <Badge variant="secondary" className="font-medium">
+                              Cancelled
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </li>
           );
         })}
-      </ol>
+      </ul>
     </div>
   );
 }

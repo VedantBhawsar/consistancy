@@ -110,7 +110,25 @@ async function handleDone(userId: string): Promise<string> {
 
   await completeTaskOccurrence(userId, next.taskId, next.id);
   const progress = await getDailyProgress(userId);
-  return `✅ Marked done: ${next.title}\n${progress.completed}/${progress.total} completed today.`;
+  const streaks = await getStreaks(userId);
+
+  const commendations = [
+    "Consistency is the key to mastery! 🔥",
+    "Keep this incredible momentum going! 💪",
+    "Another step closer to your routine goals! ✨",
+    "Making progress every single day! 🎯",
+    "Habit locked in! 🚀",
+  ];
+  const commendation = commendations[Math.floor(Math.random() * commendations.length)];
+
+  return [
+    `✅ Marked done: ${next.title}`,
+    `${commendation}`,
+    "",
+    `Today: ${progress.completed}/${progress.total} completed (${progress.completionRate}%)`,
+    asciiProgressBar(progress.completionRate),
+    `🔥 Current streak: ${streaks.currentStreak} day${streaks.currentStreak === 1 ? "" : "s"}`,
+  ].join("\n");
 }
 
 async function handleSkip(userId: string): Promise<string> {
@@ -280,7 +298,23 @@ export async function handleCallbackQuery(chatId: string, data: string): Promise
       case "done": {
         await completeOccurrenceById(user.id, occurrenceId);
         const progress = await getDailyProgress(user.id);
-        return `✅ Marked done via button.\n${progress.completed}/${progress.total} completed today.`;
+        const streaks = await getStreaks(user.id);
+
+        const commendations = [
+          "Great job! Consistency is the key to mastery. 🔥",
+          "Task crushed! Keep this momentum going. 💪",
+          "Way to go! Making progress every single day. 🎯",
+          "Awesome work! Routine on track. 🚀",
+        ];
+        const commendation = commendations[Math.floor(Math.random() * commendations.length)];
+
+        return [
+          `✅ Marked done via button!`,
+          `${commendation}`,
+          "",
+          `Today: ${progress.completed}/${progress.total} completed (${progress.completionRate}%)`,
+          `🔥 Current streak: ${streaks.currentStreak} day${streaks.currentStreak === 1 ? "" : "s"}`,
+        ].join("\n");
       }
       case "skip": {
         await skipOccurrenceById(user.id, occurrenceId);

@@ -1,5 +1,7 @@
 import { auth } from "@/auth";
 import { AppNav } from "@/components/app-nav";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { markMissedOccurrences } from "@/lib/services/occurrences";
 import {
   getAllTimeCounts,
@@ -24,7 +26,7 @@ export default async function ProgressPage() {
     <div className="min-h-full">
       <AppNav />
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-medium tracking-tight">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">
           Progress
         </h1>
 
@@ -36,55 +38,62 @@ export default async function ProgressPage() {
         </div>
 
         {weekly && (
-          <section className="mt-10">
-            <h2 className="text-sm font-medium text-[var(--ink-muted)]">
-              This week · {weekly.weeklyCompletionRate}% avg
-            </h2>
-            <div className="mt-3 flex flex-col gap-2">
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold">
+                Weekly Overview
+              </CardTitle>
+              <CardDescription>
+                This week &middot; {weekly.weeklyCompletionRate}% completion average
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               {weekly.days.map((day) => (
                 <div key={day.date} className="flex items-center gap-3">
-                  <span className="w-24 shrink-0 text-sm">{day.label}</span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--rule)]">
-                    {day.hasOccurred && day.total > 0 && (
-                      <div
-                        className="h-full rounded-full bg-[var(--brass)]"
-                        style={{ width: `${day.completionRate}%` }}
-                      />
-                    )}
+                  <span className="w-24 shrink-0 text-sm font-medium text-foreground">
+                    {day.label}
+                  </span>
+                  <div className="flex-1">
+                    <Progress
+                      value={day.hasOccurred && day.total > 0 ? day.completionRate : 0}
+                      className="h-2"
+                    />
                   </div>
-                  <span className="w-12 shrink-0 text-right font-[family-name:var(--font-mono)] text-xs tabular-nums text-[var(--ink-muted)]">
+                  <span className="w-12 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
                     {day.hasOccurred && day.total > 0 ? `${day.completionRate}%` : "—"}
                   </span>
                 </div>
               ))}
-            </div>
-          </section>
+            </CardContent>
+          </Card>
         )}
 
         {weekly && weekly.categoryBreakdown.length > 0 && (
-          <section className="mt-10">
-            <h2 className="text-sm font-medium text-[var(--ink-muted)]">
-              By category this week
-            </h2>
-            <div className="mt-3 flex flex-col gap-2">
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold">
+                By Category This Week
+              </CardTitle>
+              <CardDescription>
+                Breakdown of task completions across categories
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               {weekly.categoryBreakdown.map((c) => (
                 <div key={c.category} className="flex items-center gap-3">
-                  <span className="w-32 shrink-0 text-sm">
+                  <span className="w-32 shrink-0 text-sm font-medium text-foreground">
                     {categoryLabel(c.category)}
                   </span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--rule)]">
-                    <div
-                      className="h-full rounded-full bg-[var(--success)]"
-                      style={{ width: `${c.completionRate}%` }}
-                    />
+                  <div className="flex-1">
+                    <Progress value={c.completionRate} className="h-2" />
                   </div>
-                  <span className="w-16 shrink-0 text-right text-xs text-[var(--ink-muted)]">
+                  <span className="w-16 shrink-0 text-right font-mono text-xs text-muted-foreground">
                     {c.completed}/{c.total}
                   </span>
                 </div>
               ))}
-            </div>
-          </section>
+            </CardContent>
+          </Card>
         )}
       </main>
     </div>
@@ -93,11 +102,11 @@ export default async function ProgressPage() {
 
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-[var(--rule)] bg-[var(--bg-elevated)] p-4">
-      <p className="font-[family-name:var(--font-mono)] text-2xl tabular-nums">
+    <Card className="p-4">
+      <p className="font-mono text-2xl font-bold tabular-nums text-foreground">
         {value}
       </p>
-      <p className="mt-1 text-xs text-[var(--ink-muted)]">{label}</p>
-    </div>
+      <p className="mt-1 text-xs text-muted-foreground">{label}</p>
+    </Card>
   );
 }

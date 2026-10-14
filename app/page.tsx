@@ -4,12 +4,14 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { AppNav } from "@/components/app-nav";
 import { TodayList } from "@/components/today-list";
+import { Card } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import {
   generateOccurrencesForUser,
   markMissedOccurrences,
 } from "@/lib/services/occurrences";
 import { getDailyProgress, getTodayOccurrences } from "@/lib/services/progress";
-import { asciiProgressBar, greetingForHour } from "@/lib/utils/format";
+import { greetingForHour } from "@/lib/utils/format";
 
 export default async function TodayPage() {
   const session = await auth();
@@ -41,18 +43,19 @@ export default async function TodayPage() {
     <div className="min-h-full">
       <AppNav />
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-medium tracking-tight sm:text-4xl">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           {greetingForHour(hourNow)}, {user?.name?.split(" ")[0] ?? "there"}
         </h1>
 
-        <div className="mt-6 flex flex-wrap items-center gap-4">
-          <span className="font-[family-name:var(--font-mono)] text-sm tracking-tight text-[var(--brass)]">
-            {asciiProgressBar(progress.completionRate)}
-          </span>
-          <span className="text-sm text-[var(--ink-muted)]">
-            {progress.completed}/{progress.total} done · {progress.completionRate}%
-          </span>
-        </div>
+        <Card className="mt-6 p-4">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium text-foreground">Today&apos;s Progress</span>
+            <span className="text-xs text-muted-foreground">
+              {progress.completed}/{progress.total} completed ({progress.completionRate}%)
+            </span>
+          </div>
+          <Progress value={progress.completionRate} className="mt-3 h-2" />
+        </Card>
 
         <div className="mt-10">
           <TodayList occurrences={occurrences} timezone={user?.timezone ?? "UTC"} />

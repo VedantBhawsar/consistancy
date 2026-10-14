@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { updateProfileSchema } from "@/lib/validation/auth";
+import { setTelegramCommands } from "@/lib/notifications/telegram-bot";
 
 export async function GET() {
   const session = await auth();
@@ -62,6 +63,12 @@ export async function PATCH(request: Request) {
       telegramChatId: users.telegramChatId,
       notificationPreferences: users.notificationPreferences,
     });
+
+  if (process.env.TELEGRAM_BOT_TOKEN) {
+    setTelegramCommands().catch((err: unknown) => {
+      console.error("Failed to register Telegram commands on settings update", err);
+    });
+  }
 
   return NextResponse.json({ user });
 }

@@ -4,6 +4,11 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 function LoginForm() {
   const router = useRouter();
@@ -38,56 +43,69 @@ function LoginForm() {
   }
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-sm flex-1 flex-col justify-center gap-6 px-4 py-16">
-      <div>
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-medium tracking-tight">
-          Welcome back
-        </h1>
-        <p className="mt-1 text-sm text-[var(--ink-muted)]">
-          Sign in to keep your routine on track.
-        </p>
-      </div>
+    <div className="mx-auto flex min-h-screen w-full max-w-sm flex-1 flex-col justify-center px-4 py-16">
+      <Card>
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold tracking-tight">
+            Welcome back
+          </CardTitle>
+          <CardDescription>
+            Sign in to keep your routine on track.
+          </CardDescription>
+        </CardHeader>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          Email
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="rounded-md border border-[var(--rule)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-[var(--brass)]"
-          />
-        </label>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="login-email">Email</Label>
+              <Input
+                id="login-email"
+                type="email"
+                required
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-10"
+              />
+            </div>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Password
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="rounded-md border border-[var(--rule)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-[var(--brass)]"
-          />
-        </label>
+            <div className="space-y-2">
+              <Label htmlFor="login-password">Password</Label>
+              <Input
+                id="login-password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-10"
+              />
+            </div>
 
-        {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="mt-2 rounded-md bg-[var(--ink)] px-3 py-2 text-sm font-medium text-[var(--bg)] disabled:opacity-60"
-        >
-          {loading ? "Signing in..." : "Sign in"}
-        </button>
-      </form>
+          <CardFooter className="flex flex-col gap-3">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full"
+            >
+              {loading ? "Signing in..." : "Sign in"}
+            </Button>
 
-      <p className="text-sm text-[var(--ink-muted)]">
-        No account?{" "}
-        <Link href="/register" className="font-medium underline decoration-[var(--rule)] underline-offset-4">
-          Create one
-        </Link>
-      </p>
+            <p className="text-center text-xs text-muted-foreground">
+              Don&apos;t have an account?{" "}
+              <Link href="/register" className="font-medium text-foreground underline underline-offset-4 hover:opacity-80">
+                Create one
+              </Link>
+            </p>
+          </CardFooter>
+        </form>
+      </Card>
     </div>
   );
 }

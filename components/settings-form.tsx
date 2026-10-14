@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { HelpCircle, ExternalLink, Copy, Check } from "lucide-react";
+import { HelpCircle, ExternalLink, Copy, Check, Terminal } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { TimezoneSelect } from "./timezone-select";
 
 export type SettingsValues = {
   name: string;
@@ -37,11 +40,46 @@ export function SettingsForm({
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copiedBot, setCopiedBot] = useState(false);
+  const [registeringCommands, setRegisteringCommands] = useState(false);
+  const [commandFeedback, setCommandFeedback] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
   function copyBotHandle() {
     navigator.clipboard.writeText("@userinfobot");
     setCopiedBot(true);
     setTimeout(() => setCopiedBot(false), 2000);
+  }
+
+  async function handleRegisterCommands() {
+    setRegisteringCommands(true);
+    setCommandFeedback(null);
+    try {
+      const res = await fetch("/api/telegram/register-commands", {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCommandFeedback({
+          success: false,
+          message: data.error || "Failed to register bot commands.",
+        });
+      } else {
+        setCommandFeedback({
+          success: true,
+          message:
+            "Commands registered! Open your bot in Telegram to see the menu.",
+        });
+      }
+    } catch {
+      setCommandFeedback({
+        success: false,
+        message: "Network error trying to register commands.",
+      });
+    } finally {
+      setRegisteringCommands(false);
+    }
   }
 
   function toggleReminder(minutes: number) {
@@ -88,148 +126,150 @@ export function SettingsForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex max-w-md flex-col gap-4">
-      <label className="flex flex-col gap-1 text-sm">
-        Name
-        <input
+      <label className="flex flex-col gap-1.5 text-sm">
+        <span className="font-medium text-foreground">Name</span>
+        <Input
           value={values.name}
           onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
-          className="rounded-md border border-[var(--rule)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-[var(--brass)]"
+          className="h-10"
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Email
-        <input
+      <label className="flex flex-col gap-1.5 text-sm">
+        <span className="font-medium text-foreground">Email</span>
+        <Input
           disabled
           value={values.email}
-          className="rounded-md border border-[var(--rule)] bg-[var(--bg-elevated)] px-3 py-2 text-sm text-[var(--ink-muted)]"
+          className="h-10 text-muted-foreground"
         />
-      </label>
-
-      <label className="flex flex-col gap-1 text-sm">
-        Timezone
-        <input
-          value={values.timezone}
-          onChange={(e) => setValues((v) => ({ ...v, timezone: e.target.value }))}
-          placeholder="Asia/Kolkata"
-          className="rounded-md border border-[var(--rule)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-[var(--brass)]"
-        />
-        <span className="text-xs text-[var(--ink-muted)]">
-          IANA timezone name, used to schedule reminders at the right local time.
-        </span>
       </label>
 
       <div className="flex flex-col gap-1.5 text-sm">
+        <label className="font-medium text-foreground">Timezone</label>
+        <TimezoneSelect
+          value={values.timezone}
+          onChange={(tz) => setValues((v) => ({ ...v, timezone: tz }))}
+        />
+        <span className="text-xs text-muted-foreground">
+          IANA timezone, used to schedule reminders at the right local time.
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-1.5 text-sm">
         <div className="flex items-center justify-between">
-          <label htmlFor="telegramChatId" className="cursor-pointer font-medium text-[var(--ink)]">
+          <label htmlFor="telegramChatId" className="cursor-pointer font-medium text-foreground">
             Telegram chat ID
           </label>
           <Popover>
             <PopoverTrigger asChild>
-              <button
+              <Button
                 type="button"
-                className="inline-flex items-center gap-1.5 rounded text-xs font-medium text-[var(--brass)] hover:underline focus:outline-none"
+                variant="ghost"
+                size="xs"
+                className="gap-1 text-xs text-muted-foreground hover:text-foreground"
               >
-                <HelpCircle className="h-3.5 w-3.5" />
+                <HelpCircle className="size-3.5" />
                 <span>How to get this?</span>
-              </button>
+              </Button>
             </PopoverTrigger>
             <PopoverContent
               align="end"
               side="bottom"
               sideOffset={8}
-              className="w-[340px] sm:w-[380px] p-4 text-xs"
+              className="w-[340px] p-4 text-xs sm:w-[380px]"
             >
               <div className="space-y-3">
-                <div className="border-b border-[var(--rule)] pb-2.5">
-                  <h4 className="font-semibold text-sm text-[var(--ink)]">
+                <div className="border-b border-border pb-2.5">
+                  <h4 className="text-sm font-semibold text-foreground">
                     Finding your Telegram Chat ID
                   </h4>
-                  <p className="mt-0.5 text-[var(--ink-muted)]">
+                  <p className="mt-0.5 text-muted-foreground">
                     Follow these steps to receive reminders on Telegram:
                   </p>
                 </div>
 
                 <ol className="space-y-3">
                   <li className="flex items-start gap-2.5">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--brass-soft)] font-bold text-[11px] text-[var(--ink)]">
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-bold text-secondary-foreground">
                       1
                     </span>
                     <div className="flex-1 leading-relaxed">
-                      <span className="font-medium text-[var(--ink)]">
+                      <span className="font-medium text-foreground">
                         Open @userinfobot
                       </span>
-                      <p className="mt-0.5 text-[var(--ink-muted)]">
+                      <p className="mt-0.5 text-muted-foreground">
                         Search for{" "}
-                        <span className="font-mono font-medium text-[var(--ink)]">@userinfobot</span>{" "}
+                        <span className="font-mono font-medium text-foreground">@userinfobot</span>{" "}
                         in Telegram or click{" "}
                         <a
                           href="https://t.me/userinfobot"
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-0.5 text-[var(--brass)] underline hover:opacity-80"
+                          className="inline-flex items-center gap-0.5 text-primary underline hover:opacity-80"
                         >
                           t.me/userinfobot
-                          <ExternalLink className="h-3 w-3" />
+                          <ExternalLink className="size-3" />
                         </a>
                       </p>
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="xs"
                         onClick={copyBotHandle}
-                        className="mt-1 inline-flex items-center gap-1 rounded border border-[var(--rule)] bg-[var(--bg)] px-2 py-0.5 text-[11px] text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
+                        className="mt-1"
                       >
                         {copiedBot ? (
                           <>
-                            <Check className="h-3 w-3 text-[var(--success)]" />
-                            <span className="text-[var(--success)]">Copied username</span>
+                            <Check className="size-3 text-emerald-600 dark:text-emerald-400" />
+                            <span>Copied username</span>
                           </>
                         ) : (
                           <>
-                            <Copy className="h-3 w-3" />
+                            <Copy className="size-3" />
                             <span>Copy @userinfobot</span>
                           </>
                         )}
-                      </button>
+                      </Button>
                     </div>
                   </li>
 
                   <li className="flex items-start gap-2.5">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--brass-soft)] font-bold text-[11px] text-[var(--ink)]">
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-bold text-secondary-foreground">
                       2
                     </span>
                     <div className="flex-1 leading-relaxed">
-                      <span className="font-medium text-[var(--ink)]">
+                      <span className="font-medium text-foreground">
                         Find your numeric ID
                       </span>
-                      <p className="mt-0.5 text-[var(--ink-muted)]">
+                      <p className="mt-0.5 text-muted-foreground">
                         Tap <strong>Start</strong> (or send any message). The bot will reply with your profile info. Copy the numeric <strong>Id</strong> (e.g., <code>123456789</code>).
                       </p>
                     </div>
                   </li>
 
                   <li className="flex items-start gap-2.5">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--brass-soft)] font-bold text-[11px] text-[var(--ink)]">
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-bold text-secondary-foreground">
                       3
                     </span>
                     <div className="flex-1 leading-relaxed">
-                      <span className="font-medium text-[var(--ink)]">
+                      <span className="font-medium text-foreground">
                         Paste your ID below
                       </span>
-                      <p className="mt-0.5 text-[var(--ink-muted)]">
+                      <p className="mt-0.5 text-muted-foreground">
                         Enter that numeric ID into the <strong>Telegram chat ID</strong> field.
                       </p>
                     </div>
                   </li>
 
                   <li className="flex items-start gap-2.5">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--brass-soft)] font-bold text-[11px] text-[var(--ink)]">
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-bold text-secondary-foreground">
                       4
                     </span>
                     <div className="flex-1 leading-relaxed">
-                      <span className="font-medium text-[var(--ink)]">
+                      <span className="font-medium text-foreground">
                         Start your reminder bot
                       </span>
-                      <p className="mt-0.5 text-[var(--ink-muted)]">
+                      <p className="mt-0.5 text-muted-foreground">
                         {botUsername ? (
                           <>
                             Open{" "}
@@ -237,10 +277,10 @@ export function SettingsForm({
                               href={`https://t.me/${botUsername}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-0.5 text-[var(--brass)] underline hover:opacity-80"
+                              className="inline-flex items-center gap-0.5 text-primary underline hover:opacity-80"
                             >
                               @{botUsername}
-                              <ExternalLink className="h-3 w-3" />
+                              <ExternalLink className="size-3" />
                             </a>{" "}
                             and tap <strong>Start</strong>.
                           </>
@@ -253,31 +293,82 @@ export function SettingsForm({
                   </li>
                 </ol>
 
-                <div className="rounded-md border border-[var(--rule)] bg-[var(--bg)] p-2.5 text-[11px] text-[var(--ink-muted)]">
-                  <span className="font-semibold text-[var(--ink)]">💡 Once connected:</span>{" "}
+                <div className="rounded-md border border-border bg-muted/40 p-2.5 text-[11px] text-muted-foreground">
+                  <span className="font-semibold text-foreground">💡 Once connected:</span>{" "}
                   You will receive reminders automatically with Done, Skip, and Snooze buttons, plus daily morning &amp; evening digests.
+                </div>
+
+                <div className="border-t border-border pt-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-muted-foreground">
+                      Bot commands autocomplete:
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      disabled={registeringCommands}
+                      onClick={handleRegisterCommands}
+                    >
+                      <Terminal className="size-3" />
+                      <span>{registeringCommands ? "Registering..." : "Sync commands"}</span>
+                    </Button>
+                  </div>
+                  {commandFeedback && (
+                    <p
+                      className={`mt-1.5 text-[11px] ${
+                        commandFeedback.success
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-destructive"
+                      }`}
+                    >
+                      {commandFeedback.message}
+                    </p>
+                  )}
                 </div>
               </div>
             </PopoverContent>
           </Popover>
         </div>
 
-        <input
+        <Input
           id="telegramChatId"
           value={values.telegramChatId ?? ""}
           onChange={(e) =>
             setValues((v) => ({ ...v, telegramChatId: e.target.value }))
           }
           placeholder="123456789"
-          className="rounded-md border border-[var(--rule)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-[var(--brass)]"
+          className="h-10"
         />
-        <span className="text-xs text-[var(--ink-muted)]">
-          Message the bot, then message @userinfobot to get your numeric chat ID.
-        </span>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Message the bot, then message @userinfobot to get your numeric chat ID.</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            disabled={registeringCommands}
+            onClick={handleRegisterCommands}
+            className="ml-2 gap-1 text-primary hover:underline"
+          >
+            <Terminal className="size-3" />
+            <span>Sync commands</span>
+          </Button>
+        </div>
+        {commandFeedback && (
+          <p
+            className={`text-xs ${
+              commandFeedback.success
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-destructive"
+            }`}
+          >
+            {commandFeedback.message}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="text-sm">Default reminder timing</span>
+        <span className="text-sm font-medium text-foreground">Default reminder timing</span>
         <div className="flex flex-wrap gap-2">
           {REMINDER_OPTIONS.map((opt) => (
             <button
@@ -286,8 +377,8 @@ export function SettingsForm({
               onClick={() => toggleReminder(opt.value)}
               className={`rounded-full border px-3 py-1 text-xs transition-colors ${
                 values.remindBeforeMinutes.includes(opt.value)
-                  ? "border-[var(--brass)] bg-[var(--brass-soft)] text-[var(--ink)]"
-                  : "border-[var(--rule)] text-[var(--ink-muted)]"
+                  ? "border-primary bg-primary/10 text-primary font-medium"
+                  : "border-border text-muted-foreground hover:text-foreground"
               }`}
             >
               {opt.label}
@@ -296,18 +387,18 @@ export function SettingsForm({
         </div>
       </div>
 
-      {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
       {saved && !error && (
-        <p className="text-sm text-[var(--success)]">Settings saved.</p>
+        <p className="text-sm text-emerald-600 dark:text-emerald-400">Settings saved.</p>
       )}
 
-      <button
+      <Button
         type="submit"
         disabled={saving}
-        className="self-start rounded-md bg-[var(--ink)] px-4 py-2 text-sm font-medium text-[var(--bg)] disabled:opacity-50"
+        className="self-start"
       >
         {saving ? "Saving..." : "Save settings"}
-      </button>
+      </Button>
     </form>
   );
 }

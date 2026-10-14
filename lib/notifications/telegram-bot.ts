@@ -61,10 +61,12 @@ export async function answerTelegramCallback(
   }
 }
 
-/** Registers the bot's slash-command menu (BotFather-style autocomplete). Safe to call on every startup. */
-export async function setTelegramCommands(): Promise<void> {
+/** Registers the bot's slash-command menu (BotFather-style autocomplete). Safe to call on every startup or settings save. */
+export async function setTelegramCommands(): Promise<{ success: boolean; error?: string }> {
   const token = botToken();
-  if (!token) return;
+  if (!token) {
+    return { success: false, error: "TELEGRAM_BOT_TOKEN is not configured" };
+  }
 
   const commands = [
     { command: "today", description: "Show today's full schedule" },
@@ -87,8 +89,17 @@ export async function setTelegramCommands(): Promise<void> {
     if (!res.ok) {
       const data = await res.json().catch(() => null);
       console.error(`[telegram] setMyCommands failed (${res.status})`, data);
+      return {
+        success: false,
+        error: data?.description || `Telegram API error (${res.status})`,
+      };
     }
+    return { success: true };
   } catch (err) {
     console.error("[telegram] setMyCommands error", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Unknown error",
+    };
   }
 }

@@ -4,6 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TaskForm, type TaskFormValues } from "./task-form";
 import { categoryLabel } from "@/lib/utils/format";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export type TaskRow = {
   id: string;
@@ -61,9 +64,9 @@ export function TaskList({ tasks }: { tasks: TaskRow[] }) {
 
   if (tasks.length === 0) {
     return (
-      <p className="text-sm text-[var(--ink-muted)]">
+      <Card className="border-dashed p-8 text-center text-sm text-muted-foreground">
         No tasks yet — add your first one above.
-      </p>
+      </Card>
     );
   }
 
@@ -73,53 +76,64 @@ export function TaskList({ tasks }: { tasks: TaskRow[] }) {
         .slice()
         .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime))
         .map((task) => (
-          <li
-            key={task.id}
-            className="rounded-lg border border-[var(--rule)] bg-[var(--bg-elevated)] p-4"
-          >
-            {editingId === task.id ? (
-              <TaskForm
-                initialValues={toFormValues(task)}
-                onDone={() => setEditingId(null)}
-              />
-            ) : (
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-[family-name:var(--font-mono)] text-sm tabular-nums text-[var(--brass)]">
-                      {task.scheduledTime.slice(0, 5)}
-                    </span>
-                    <span className={`text-sm font-medium ${!task.isActive ? "text-[var(--ink-muted)]" : ""}`}>
-                      {task.title}
-                    </span>
-                    {!task.isActive && (
-                      <span className="rounded-full border border-[var(--rule)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--ink-muted)]">
-                        Paused
-                      </span>
-                    )}
+          <li key={task.id}>
+            <Card className={!task.isActive ? "opacity-75" : ""}>
+              <CardContent className="p-4">
+                {editingId === task.id ? (
+                  <TaskForm
+                    initialValues={toFormValues(task)}
+                    onDone={() => setEditingId(null)}
+                  />
+                ) : (
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+                          {task.scheduledTime.slice(0, 5)}
+                        </span>
+                        <span
+                          className={`text-sm font-medium ${
+                            !task.isActive ? "text-muted-foreground line-through" : "text-foreground"
+                          }`}
+                        >
+                          {task.title}
+                        </span>
+                        {!task.isActive && (
+                          <Badge variant="outline" className="text-[10px]">
+                            Paused
+                          </Badge>
+                        )}
+                        <Badge variant="secondary" className="text-[10px]">
+                          {categoryLabel(task.category)}
+                        </Badge>
+                      </div>
+                      <p className="mt-1.5 text-xs text-muted-foreground">
+                        {task.durationMinutes} min · {RECURRENCE_LABELS[task.recurrenceRule.type]}
+                        {task.description ? ` · ${task.description}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => setEditingId(task.id)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        disabled={deletingId === task.id}
+                        onClick={() => handleDelete(task.id)}
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
-                  <p className="mt-1 text-xs text-[var(--ink-muted)]">
-                    {categoryLabel(task.category)} · {task.durationMinutes} min ·{" "}
-                    {RECURRENCE_LABELS[task.recurrenceRule.type]}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-3 text-xs">
-                  <button
-                    onClick={() => setEditingId(task.id)}
-                    className="text-[var(--ink-muted)] underline decoration-[var(--rule)] underline-offset-4 hover:text-[var(--ink)]"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    disabled={deletingId === task.id}
-                    onClick={() => handleDelete(task.id)}
-                    className="text-[var(--danger)] underline decoration-[var(--danger-soft)] underline-offset-4 disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            )}
+                )}
+              </CardContent>
+            </Card>
           </li>
         ))}
     </ul>

@@ -4,6 +4,19 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORIES } from "@/lib/constants";
 import { categoryLabel } from "@/lib/utils/format";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const RECURRENCE_TYPES = [
   { value: "DAILY", label: "Every day" },
@@ -130,48 +143,51 @@ export function TaskForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-          Title
-          <input
+        <div className="flex flex-col gap-1.5 sm:col-span-2">
+          <Label htmlFor="task-title">Title</Label>
+          <Input
+            id="task-title"
             required
             value={values.title}
             onChange={(e) => setValues((v) => ({ ...v, title: e.target.value }))}
-            placeholder="DSA Practice"
-            className="rounded-md border border-[var(--rule)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-[var(--brass)]"
+            placeholder="e.g. DSA Practice"
+            className="h-10"
           />
-        </label>
+        </div>
 
-        <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-          Description
-          <textarea
+        <div className="flex flex-col gap-1.5 sm:col-span-2">
+          <Label htmlFor="task-description">Description</Label>
+          <Textarea
+            id="task-description"
             value={values.description ?? ""}
             onChange={(e) =>
               setValues((v) => ({ ...v, description: e.target.value }))
             }
             rows={2}
             placeholder="Solve 2 NeetCode problems."
-            className="rounded-md border border-[var(--rule)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-[var(--brass)]"
           />
-        </label>
+        </div>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Time
-          <input
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="task-time">Time</Label>
+          <Input
+            id="task-time"
             type="time"
             required
             value={values.scheduledTime}
             onChange={(e) =>
               setValues((v) => ({ ...v, scheduledTime: e.target.value }))
             }
-            className="rounded-md border border-[var(--rule)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-[var(--brass)]"
+            className="h-10"
           />
-        </label>
+        </div>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Duration (minutes)
-          <input
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="task-duration">Duration (minutes)</Label>
+          <Input
+            id="task-duration"
             type="number"
             min={5}
             max={1440}
@@ -180,121 +196,142 @@ export function TaskForm({
             onChange={(e) =>
               setValues((v) => ({ ...v, durationMinutes: Number(e.target.value) }))
             }
-            className="rounded-md border border-[var(--rule)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-[var(--brass)]"
+            className="h-10"
           />
-        </label>
+        </div>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Category
-          <select
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="task-category">Category</Label>
+          <Select
             value={values.category}
-            onChange={(e) => setValues((v) => ({ ...v, category: e.target.value }))}
-            className="rounded-md border border-[var(--rule)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-[var(--brass)]"
+            onValueChange={(val) => setValues((v) => ({ ...v, category: val }))}
           >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {categoryLabel(c)}
-              </option>
-            ))}
-          </select>
-        </label>
+            <SelectTrigger id="task-category" className="h-10 w-full">
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORIES.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {categoryLabel(c)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Priority
-          <select
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="task-priority">Priority</Label>
+          <Select
             value={values.priority}
-            onChange={(e) =>
+            onValueChange={(val) =>
               setValues((v) => ({
                 ...v,
-                priority: e.target.value as TaskFormValues["priority"],
+                priority: val as TaskFormValues["priority"],
               }))
             }
-            className="rounded-md border border-[var(--rule)] bg-[var(--bg-elevated)] px-3 py-2 text-sm outline-none focus:border-[var(--brass)]"
           >
-            <option value="LOW">Low</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="HIGH">High</option>
-          </select>
-        </label>
+            <SelectTrigger id="task-priority" className="h-10 w-full">
+              <SelectValue placeholder="Select priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="LOW">Low</SelectItem>
+              <SelectItem value="MEDIUM">Medium</SelectItem>
+              <SelectItem value="HIGH">High</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="text-sm">Repeats</span>
+        <Label>Repeats</Label>
         <div className="flex flex-wrap gap-2">
           {RECURRENCE_TYPES.map((rt) => (
-            <button
-              type="button"
+            <Button
               key={rt.value}
+              type="button"
+              variant={values.recurrenceType === rt.value ? "default" : "outline"}
+              size="sm"
               onClick={() => setValues((v) => ({ ...v, recurrenceType: rt.value }))}
-              className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-                values.recurrenceType === rt.value
-                  ? "border-[var(--brass)] bg-[var(--brass-soft)] text-[var(--ink)]"
-                  : "border-[var(--rule)] text-[var(--ink-muted)]"
-              }`}
+              className="rounded-full text-xs"
             >
               {rt.label}
-            </button>
+            </Button>
           ))}
         </div>
 
         {needsDayPicker && (
-          <div className="mt-1 flex gap-1.5">
+          <div className="mt-2 flex gap-1.5">
             {DAY_LABELS.map((label, day) => (
-              <button
-                type="button"
+              <Button
                 key={day}
+                type="button"
+                variant={values.daysOfWeek.includes(day) ? "default" : "outline"}
+                size="icon-sm"
                 onClick={() => toggleDay(day)}
-                className={`h-8 w-8 rounded-full border text-xs transition-colors ${
-                  values.daysOfWeek.includes(day)
-                    ? "border-[var(--brass)] bg-[var(--brass-soft)]"
-                    : "border-[var(--rule)] text-[var(--ink-muted)]"
-                }`}
+                className="size-8 rounded-full text-xs font-medium"
               >
                 {label[0]}
-              </button>
+              </Button>
             ))}
           </div>
         )}
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="text-sm">Telegram reminder</span>
+        <Label>Telegram reminder</Label>
         <div className="flex flex-wrap gap-2">
           {REMINDER_OPTIONS.map((opt) => (
-            <button
-              type="button"
+            <Button
               key={opt.value}
-              onClick={() => toggleReminder(opt.value)}
-              className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+              type="button"
+              variant={
                 values.remindBeforeMinutes.includes(opt.value)
-                  ? "border-[var(--brass)] bg-[var(--brass-soft)] text-[var(--ink)]"
-                  : "border-[var(--rule)] text-[var(--ink-muted)]"
-              }`}
+                  ? "default"
+                  : "outline"
+              }
+              size="sm"
+              onClick={() => toggleReminder(opt.value)}
+              className="rounded-full text-xs"
             >
               {opt.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="task-active"
           checked={values.isActive}
-          onChange={(e) => setValues((v) => ({ ...v, isActive: e.target.checked }))}
+          onCheckedChange={(checked) =>
+            setValues((v) => ({ ...v, isActive: Boolean(checked) }))
+          }
         />
-        Active
-      </label>
+        <Label htmlFor="task-active" className="cursor-pointer font-normal">
+          Active in routine
+        </Label>
+      </div>
 
-      {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-      <button
-        type="submit"
-        disabled={saving}
-        className="self-start rounded-md bg-[var(--ink)] px-4 py-2 text-sm font-medium text-[var(--bg)] disabled:opacity-50"
-      >
-        {saving ? "Saving..." : values.id ? "Save changes" : "Add to routine"}
-      </button>
+      <div className="flex items-center gap-3 pt-2">
+        <Button type="submit" disabled={saving}>
+          {saving ? "Saving..." : values.id ? "Save changes" : "Add to routine"}
+        </Button>
+        {onDone && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onDone}
+          >
+            Cancel
+          </Button>
+        )}
+      </div>
     </form>
   );
 }
